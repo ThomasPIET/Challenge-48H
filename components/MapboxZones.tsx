@@ -1,8 +1,35 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
+import {
+    Card,
+    CardContent,
+
+} from "@/components/ui/card"
+
+interface NewsItem {
+    quartier: string;
+    // Ajoutez d'autres propriétés selon la structure de vos données
+}
+
+interface ZoneData {
+    id: number;
+    temperature: number;
+    humidite: number;
+    force_moyenne_du_vecteur_de_vent: number;
+    force_du_vecteur_de_vent_max: number;
+    pluie_intensite_max: number;
+    date: string;
+    quartier: string;
+    sismicite: number;
+    concentration_gaz: number;
+    pluie_totale: number;
+    seisme: boolean;
+    inondation: boolean;
+}
+
 
 interface HighlightLayer {
     program: WebGLProgram;
@@ -16,6 +43,9 @@ interface HighlightLayer {
 const MapboxExample = () => {
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<mapboxgl.Map | null>(null);
+
+    const [news, setNews] = useState<NewsItem[]>([]); // Utilisation du type NewsItem ici
+    const [loading, setLoading] = useState(true);
 
     // Fonction pour calculer le centre géographique d'un polygone
     const calculateCentroid = (polygon: Array<{ lng: number; lat: number }>): { lng: number; lat: number } => {
@@ -33,14 +63,30 @@ const MapboxExample = () => {
         return { lng: centerLng, lat: centerLat };
     };
 
+    // Fonction pour récupérer les données de l'API
+    useEffect(() => {
+        async function fetchData() {
+            try {
+                const response = await fetch('api/csv-data');
+                const data = await response.json();
+                setNews(data);
+                setLoading(false);
+            } catch (error) {
+                console.error('Erreur lors du chargement des données :', error);
+                setLoading(false);
+            }
+        }
+        fetchData();
+    }, []);
+
     useEffect(() => {
         mapboxgl.accessToken =
             'pk.eyJ1IjoiZ2Fib3JkZSIsImEiOiJjbTZmMWUwOGQwMGZzMmxzYmZ3N3o1YTlrIn0.WhV1l2qaLrtY_SwbzZ6-dA';
 
         const map = new mapboxgl.Map({
             container: mapContainerRef.current!,
-            zoom: 12,
-            center: [1.4442, 43.6047],
+            zoom: 11.5,
+            center: [1.4300, 43.6200],
             style: 'mapbox://styles/mapbox/light-v11',
             antialias: true,
             projection: 'mercator',
@@ -100,7 +146,7 @@ const MapboxExample = () => {
                 [0.0, 1.0, 0.0, 0.5], // Vert
                 [0.0, 0.0, 1.0, 0.5], // Bleu
                 [1.0, 1.0, 0.0, 0.5], // Jaune
-                [1.0, 0.0, 1.0, 0.5], // Magenta
+                [0.0, 1.0, 1.0, 0.5], // Cyan
             ],
             onAdd(this: HighlightLayer, map: mapboxgl.Map, gl: WebGLRenderingContext) {
                 const compileShader = (source: string, type: number) => {
@@ -111,18 +157,18 @@ const MapboxExample = () => {
                 };
 
                 const vertexSource = `
-          uniform mat4 u_matrix;
-          attribute vec2 a_pos;
-          void main() {
-            gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
-          }`;
+                  uniform mat4 u_matrix;
+                  attribute vec2 a_pos;
+                  void main() {
+                    gl_Position = u_matrix * vec4(a_pos, 0.0, 1.0);
+                  }`;
 
                 const fragmentSource = `
-          precision mediump float;
-          uniform vec4 u_color;
-          void main() {
-            gl_FragColor = u_color;
-          }`;
+                  precision mediump float;
+                  uniform vec4 u_color;
+                  void main() {
+                    gl_FragColor = u_color;
+                  }`;
 
                 const vertexShader = compileShader(vertexSource, gl.VERTEX_SHADER);
                 const fragmentShader = compileShader(fragmentSource, gl.FRAGMENT_SHADER);
@@ -134,7 +180,6 @@ const MapboxExample = () => {
 
                 this.aPos = gl.getAttribLocation(this.program, 'a_pos');
 
-                // Créer les buffers pour les polygones et les bordures
                 const createBuffers = (polygon: mapboxgl.MercatorCoordinate[], isBorder = false) => {
                     const coords = polygon
                         .map((p) => [p.x, p.y])
@@ -156,7 +201,6 @@ const MapboxExample = () => {
                 gl.enable(gl.BLEND);
                 gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-                // Dessiner les polygones
                 this.polygons.forEach((polygon, index) => {
                     const color = this.colors[index % this.colors.length];
                     gl.uniform4f(gl.getUniformLocation(this.program, 'u_color'), ...color);
@@ -166,8 +210,7 @@ const MapboxExample = () => {
                     gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
                     gl.drawArrays(gl.TRIANGLE_FAN, 0, polygon.length);
 
-                    // Dessiner les bordures
-                    gl.uniform4f(gl.getUniformLocation(this.program, 'u_color'), 0, 0, 0, 1); // Noir
+                    gl.uniform4f(gl.getUniformLocation(this.program, 'u_color'), 0, 0, 0, 1);
                     gl.bindBuffer(gl.ARRAY_BUFFER, this.borderBuffers[index]);
                     gl.vertexAttribPointer(this.aPos, 2, gl.FLOAT, false, 0, 0);
                     gl.drawArrays(gl.LINE_LOOP, 0, polygon.length + 1);
@@ -180,13 +223,32 @@ const MapboxExample = () => {
         map.on('load', () => {
             map.addLayer(highlightLayer);
 
-            // Calculer les centres des polygones et ajouter des marqueurs
             polygons.forEach((polygon, index) => {
                 const centroid = calculateCentroid(polygon);
 
-                const markerElement = createCustomMarker(index + 1);
-                const infobubble = createInfobubble(`Polygone ${index + 1}`);
+                // Associer les données de la zone
+                const zoneData = news.find((zone) => zone.quartier === `Zone ${index + 1}`) as ZoneData; // Ajouter le typage ici
+
+                // Si zoneData est undefined (zone non trouvée), on utilise un objet vide par défaut
+                const infobubble = createInfobubble(zoneData?.quartier || 'Zone inconnue');
+                infobubble.innerHTML = `
+                <b>${zoneData?.quartier || 'Zone inconnue'}</b><br/>
+                Température: ${zoneData?.temperature || 'N/A'} °C<br/>
+                Humidité: ${zoneData?.humidite || 'N/A'}%<br/>
+                Force moyenne du vent: ${zoneData?.force_moyenne_du_vecteur_de_vent || 'N/A'} m/s<br/>
+                Force max du vent: ${zoneData?.force_du_vecteur_de_vent_max || 'N/A'} m/s<br/>
+                Pluie max: ${zoneData?.pluie_intensite_max || 'N/A'} mm/h<br/>
+                Date: ${zoneData?.date || 'N/A'}<br/>
+                Sismicité: ${zoneData?.sismicite || 'N/A'}<br/>
+                Concentration de gaz: ${zoneData?.concentration_gaz || 'N/A'} µg/m³<br/>
+                Pluie totale: ${zoneData?.pluie_totale || 'N/A'} mm<br/>
+                Séisme: ${zoneData?.seisme ? 'Oui' : 'Non'}<br/>
+                Inondation: ${zoneData?.inondation ? 'Oui' : 'Non'}<br/>
+            `   ;
+
                 document.body.appendChild(infobubble);
+
+                const markerElement = createCustomMarker(index + 1);
 
                 new mapboxgl.Marker({
                     element: markerElement,
@@ -194,10 +256,9 @@ const MapboxExample = () => {
                     .setLngLat([centroid.lng, centroid.lat])
                     .addTo(map);
 
-                // Ajouter un effet hover sur le marqueur
                 markerElement.addEventListener('mouseenter', (e) => {
                     infobubble.style.display = 'block';
-                    infobubble.style.left = `${e.clientX + 10}px`; // Position relative au curseur
+                    infobubble.style.left = `${e.clientX + 10}px`;
                     infobubble.style.top = `${e.clientY + 10}px`;
                     markerElement.style.backgroundColor = '#000';
                     markerElement.style.color = '#fff';
@@ -213,21 +274,22 @@ const MapboxExample = () => {
         return () => {
             map.remove();
         };
-    }, []);
+    }, [news]); // Réexécuter quand les données changent
 
     const createCustomMarker = (number: number) => {
         const marker = document.createElement('div');
         marker.style.backgroundColor = '#fff';
         marker.style.border = '2px solid #000';
         marker.style.borderRadius = '50%';
-        marker.style.width = '30px';
-        marker.style.height = '30px';
+        marker.style.width = '40px';
+        marker.style.height = '40px';
         marker.style.display = 'flex';
         marker.style.alignItems = 'center';
         marker.style.justifyContent = 'center';
         marker.style.fontWeight = 'bold';
         marker.style.color = '#000';
         marker.style.transition = 'transform 0.2s ease, background-color 0.2s ease';
+        marker.style.fontSize = '16px'; // Augmente la taille de la police ici
         marker.innerText = String(number);
 
         return marker;
@@ -249,8 +311,12 @@ const MapboxExample = () => {
     };
 
     return (
-        <div className="relative w-full h-screen">
-            <div ref={mapContainerRef} className="absolute top-0 left-0 w-full h-full" />
+        <div className="flex justify-center mt-5">
+            <Card className="w-3/4 h-[700px] border-2  rounded-lg overflow-hidden">
+                <CardContent ref={mapContainerRef} className="w-full h-full">
+                    {/* Le contenu de la carte ici */}
+                </CardContent>
+            </Card>
         </div>
     );
 };
