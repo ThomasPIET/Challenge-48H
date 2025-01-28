@@ -1,48 +1,83 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bar, BarChart, CartesianGrid, XAxis, Tooltip } from "recharts";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-
-const chartData = [
-    { zone: 1, month: "Jan", earthquake: 2, flood: 0 },
-    { zone: 1, month: "Feb", earthquake: 3, flood: 1 },
-    { zone: 1, month: "Mar", earthquake: 1, flood: 0 },
-    { zone: 1, month: "Apr", earthquake: 0, flood: 2 },
-    { zone: 1, month: "May", earthquake: 1, flood: 0 },
-    { zone: 1, month: "Jun", earthquake: 0, flood: 1 },
-    { zone: 1, month: "Jul", earthquake: 2, flood: 0 },
-    { zone: 1, month: "Aug", earthquake: 1, flood: 1 },
-    { zone: 1, month: "Sep", earthquake: 0, flood: 0 },
-    { zone: 1, month: "Oct", earthquake: 1, flood: 2 },
-    { zone: 1, month: "Nov", earthquake: 3, flood: 1 },
-    { zone: 1, month: "Dec", earthquake: 2, flood: 0 },
-];
+import ZoneSelector from "../../components/stats/ZoneSelector";
+import YearSelector from "../../components/stats/YearSelector";
+import MetricSelector from "../../components/stats/MetricSelector";
+import StatisticsChart from "../../components/stats/StatisticsChart";
 
 export function Stats() {
+    const [news, setNews] = useState([]);
+    const [loading, setLoading] = useState(true);
     const [selectedZone, setSelectedZone] = useState(1);
     const [selectedMetrics, setSelectedMetrics] = useState(["earthquake", "flood"]);
-    const [isClient, setIsClient] = useState(false);  // Nouveau state pour contrôler l'hydratation
+    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [availableYears, setAvailableYears] = useState([]);
+    const [isClient, setIsClient] = useState(false);
+
+    const extractZoneNumber = (zoneString) => {
+        const match = zoneString.match(/\d+/);
+        return match ? parseInt(match[0], 10) : null;
+    };
 
     useEffect(() => {
-        setIsClient(true);  // Après le premier rendu côté client
+        async function fetchData() {
+            try {
+                const response = await fetch("/api/csv-data");
+                const data = await response.json();
+                setNews(
+                    data.map((item) => ({
+                        ...item,
+                        zoneNumber: extractZoneNumber(item.quartier),
+                    }))
+                );
+                setLoading(false);
+                setAvailableYears([...new Set(data.map((item) => new Date(item.date).getFullYear()))]);
+            } catch (error) {
+                console.error("Erreur lors du chargement des données :", error);
+                setLoading(false);
+            }
+        }
+        fetchData();
     }, []);
 
-    const handleMetricToggle = (metric: string) => {
+    const chartData = news
+        .filter((item) => {
+            const itemYear = new Date(item.date).getFullYear();
+            const itemZone = item.quartier.trim().toLowerCase();
+            const isMatchingZone = selectedZone === 0 || itemZone === `zone ${selectedZone}`.toLowerCase();
+            return itemYear === selectedYear && isMatchingZone;
+        })
+        .map((item) => ({
+            zone: item.quartier,
+            month: new Date(item.date).toLocaleString("en", { month: "short" }),
+            earthquake: item.seisme === "True" ? 1 : 0,
+            flood: item.inondation === "True" ? 1 : 0,
+        }));
+
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const monthlyData = months.map((month) => {
+        const dataForMonth = chartData.filter((item) => item.month === month);
+        return {
+            month,
+            earthquake: dataForMonth.reduce((acc, item) => acc + item.earthquake, 0),
+            flood: dataForMonth.reduce((acc, item) => acc + item.flood, 0),
+        };
+    });
+
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    const handleMetricToggle = (metric) => {
         setSelectedMetrics((prev) =>
-            prev.includes(metric)
-                ? prev.filter((m) => m !== metric)
-                : [...prev, metric]
+            prev.includes(metric) ? prev.filter((m) => m !== metric) : [...prev, metric]
         );
     };
 
-    const filteredData = chartData.filter((data) => data.zone === selectedZone);
-
-    if (!isClient) {
-        return null;  // Ne rend pas le composant tant que l'hydratation n'est pas terminée
+    if (!isClient || loading) {
+        return <div>Loading...</div>;
     }
 
     return (
@@ -50,65 +85,18 @@ export function Stats() {
             <CardHeader>
                 <CardTitle className="text-2xl font-bold">Zone Statistics</CardTitle>
                 <p className="text-sm text-muted-foreground mt-2">
-                    Select a zone and metrics to view statistics for the entire year.
+                    Select a zone, year, and metrics to view statistics for the entire year.
                 </p>
             </CardHeader>
             <CardContent>
-                {/* Zone Selector */}
-                <div className="mb-4">
-                    <Label htmlFor="zone" className="block text-sm font-medium mb-2">
-                        Select Zone
-                    </Label>
-                    <Select
-                        onValueChange={(value) => setSelectedZone(Number(value))}
-                        defaultValue={String(selectedZone)}
-                    >
-                        <SelectTrigger className="w-full">
-                            <SelectValue placeholder={`Zone ${selectedZone}`} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {[1, 2, 3, 4, 5].map((zone) => (
-                                <SelectItem key={zone} value={String(zone)}>
-                                    Zone {zone}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-
-                {/* Metrics Selector */}
-                <div className="mb-4">
-                    <span className="block text-sm font-medium mb-2">
-                        Select Metrics to Display
-                    </span>
-                    <div className="flex gap-4 flex-wrap">
-                        {["earthquake", "flood"].map((metric) => (
-                            <Label key={metric} className="flex items-center gap-2">
-                                <Checkbox
-                                    checked={selectedMetrics.includes(metric)}
-                                    onCheckedChange={() => handleMetricToggle(metric)}
-                                />
-                                <span className="capitalize text-sm">{metric}</span>
-                            </Label>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Chart */}
-                <div className="mt-6">
-                    <BarChart width={700} height={300} data={filteredData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="month" />
-                        <Tooltip />
-                        {selectedMetrics.map((metric) => (
-                            <Bar
-                                key={metric}
-                                dataKey={metric}
-                                fill={metric === "earthquake" ? "#a36603" : "#044bbd"}
-                            />
-                        ))}
-                    </BarChart>
-                </div>
+                <ZoneSelector selectedZone={selectedZone} onZoneChange={setSelectedZone} />
+                <YearSelector
+                    selectedYear={selectedYear}
+                    availableYears={availableYears}
+                    onYearChange={setSelectedYear}
+                />
+                <MetricSelector selectedMetrics={selectedMetrics} onMetricToggle={handleMetricToggle} />
+                <StatisticsChart data={monthlyData} selectedMetrics={selectedMetrics} />
             </CardContent>
         </Card>
     );

@@ -1,5 +1,7 @@
 "use client"
 
+import { getServerUrl } from './utils'
+
 type WebSocketMessage = {
   type: 'message' | 'connection' | 'disconnection'
   data: any
@@ -27,7 +29,7 @@ class WebSocketService {
   private connect() {
     if (!this.isClient) return
 
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000'
+    const wsUrl = getServerUrl()
     this.ws = new WebSocket(wsUrl)
 
     this.ws.onopen = () => {
