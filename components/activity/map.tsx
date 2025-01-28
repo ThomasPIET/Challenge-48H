@@ -100,7 +100,6 @@ const Map3D: React.FC = () => {
                 }
             });
 
-            // Ajuste la lumière globale
             map.setLight({
                 anchor: 'viewport',
                 color: 'white',
@@ -109,7 +108,6 @@ const Map3D: React.FC = () => {
             });
 
 
-// Optionnel : incliner la vue pour mieux voir la 3D
             map.easeTo({
                 pitch: 60,
                 bearing: -10,
@@ -216,14 +214,12 @@ const Map3D: React.FC = () => {
 
     return (
         <Card className='flex h-screen'>
-
-
             <Card
                 ref={mapContainerRef}
                 className='w-full h-screen'
             />
 
-            <ScrollArea className="w-1/2 h-full overflow-y-auto">
+            <ScrollArea className="w-1/3 h-full overflow-y-auto">
                 <div className="p-4">
                     <h4 className="mb-6 text-2xl font-medium  leading-none">Tags</h4>
                     <ul className="p-0">
@@ -239,7 +235,7 @@ const Map3D: React.FC = () => {
                                 }
                             >
                                 <div className="block w-full p-2 rounded hover:bg-gray-100">
-                                    {activity.name}
+                                    Zone {activity.zone} - {activity.name}
                                 </div>
 
 
@@ -250,7 +246,6 @@ const Map3D: React.FC = () => {
                     </ul>
                 </div>
             </ScrollArea>
-
         </Card>
     );
 };

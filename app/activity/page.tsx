@@ -10,8 +10,8 @@ export default function ActivityPage() {
     });
 
     return (
-        <Card className="w-full h-full overflow-y-auto">
-                <Map />
-            </Card>
+        <Card className="w-full h-full overflow-y-auto fixed">
+            <Map/>
+        </Card>
     )
 }
