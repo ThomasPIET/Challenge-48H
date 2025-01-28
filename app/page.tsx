@@ -68,9 +68,6 @@ export default function MainPage() {
 
     return (
         <div className="flex">
-            <div className="fixed h-screen w-64 z-50">
-                <Sidebar />
-            </div>
 
             <div className="flex-1 ml-16 overflow-auto">
                 <div className="flex flex-col relative">
