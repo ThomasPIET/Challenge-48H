@@ -3,16 +3,20 @@
 import {useState} from "react";
 import {Button} from "@/components/ui/button";
 import {cn} from "@/lib/utils";
-import {Home, MessageCircle, Map, Drama, Menu, X, CloudSunRain} from "lucide-react";
+import {Home, MessageCircle, Map, Drama, ChartColumn, Menu, X, CloudSunRain} from "lucide-react";
+import {redirect} from "next/navigation";
 
 const Sidebar = ({children}: { children: React.ReactNode }) => {
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [activeTab, setActiveTab] = useState("Accueil");
+
+
     const menuItems = [
-        {name: "Accueil", icon: <Home className="h-12 w-12"/>},
-        {name: "Forum", icon: <MessageCircle className="h-12 w-12"/>},
-        {name: "Vue d’ensemble", icon: <Map className="h-12 w-12"/>},
-        {name: "Activité", icon: <Drama className="h-12 w-12"/>},
+        {name: "Accueil", icon: <Home className="h-12 w-12"/>, path: "/"},
+        {name: "Forum", icon: <MessageCircle className="h-12 w-12"/>, path: "/chat"},
+        {name: "Vue d’ensemble", icon: <Map className="h-12 w-12"/>, path: "/map"},
+        {name: "Activité", icon: <Drama className="h-12 w-12"/>, path: "/activity"},
+        {name: "Statistiques", icon: <ChartColumn className="h-12 w-12"/>, path: "/stats"},
     ];
     return (
         <div className="flex h-screen ">
@@ -44,9 +48,11 @@ const Sidebar = ({children}: { children: React.ReactNode }) => {
                 >
                     {menuItems.map((item) => (
                         <Button
+
                             key={item.name}
                             variant={activeTab === item.name ? "secondary" : "ghost"}
-                            onClick={() => setActiveTab(item.name)}
+                            onClick={() => redirect(item.path)}
+                            // onClick={() => setActiveTab(item.name) && redirect(item.path)}
                             className={cn(
                                 "flex items-center space-x-4 rounded-lg",
                                 isCollapsed ? "justify-center" : "justify-start"
