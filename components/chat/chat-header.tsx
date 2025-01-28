@@ -1,24 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import { Card } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { useChat } from "@/components/chat/chat-context"
 
 export function ChatHeader() {
-  const [selectedChat, setSelectedChat] = useState("Zone 1")
-  const zones = ["Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5"]
+  const { activeZone, setActiveZone } = useChat()
+  const zones = ['1', '2', '3', '4', '5'] as const
 
   return (
-    <div className="flex gap-4 mb-4 p-2 overflow-x-auto w-full">
+    <div className="flex gap-4 mb-4">
       {zones.map((zone) => (
-        <Card
+        <Button
           key={zone}
-          className={`p-4 cursor-pointer flex-1 text-center ${
-            selectedChat === zone ? "bg-primary text-primary-foreground" : "hover:bg-accent"
-          }`}
-          onClick={() => setSelectedChat(zone)}
+          onClick={() => setActiveZone(zone)}
+          variant={activeZone === zone ? "default" : "outline"}
+          className="flex-1"
         >
-          {zone}
-        </Card>
+          Zone {zone}
+        </Button>
       ))}
     </div>
   )
