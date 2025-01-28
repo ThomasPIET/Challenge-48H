@@ -27,8 +27,7 @@ class WebSocketService {
   private connect() {
     if (!this.isClient) return
 
-    // Utiliser l'URL du WebSocket depuis les variables d'environnement ou fallback sur localhost
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001'
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3000'
     this.ws = new WebSocket(wsUrl)
 
     this.ws.onopen = () => {

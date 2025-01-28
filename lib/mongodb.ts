@@ -1,7 +1,7 @@
 import mongoose from 'mongoose'
 import { config } from 'dotenv'
 
-config({ path: '.env.local' })
+config({ path: '.env' })
 
 if (!process.env.MONGODB_URI) {
   throw new Error('Please add your Mongodb URI to .env.local')
@@ -23,11 +23,10 @@ export async function connectDB() {
     console.log('MongoDB connected')
   } catch (error) {
     console.error('MongoDB connection error:', error)
-    throw error // Rethrow the error to handle it in the calling function
+    throw error
   }
 }
 
-// Schéma des messages
 const messageSchema = new mongoose.Schema({
   content: { type: String, required: true },
   username: { type: String, required: true },
