@@ -1,8 +1,11 @@
+import MapboxExample from '../components/MapboxZones';
 
 export default function Home() {
   return (
     <div>
-      Hello World
+        <div style={{ height: '100vh', width: '100%' }}>
+            <MapboxExample />
+        </div>
     </div>
   );
 }
